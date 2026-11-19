@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>挑出来的那七天</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f2ee; color: #26231f; line-height: 1.6; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 26px; letter-spacing: 1px; }
+  .lead { color: #625b52; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #e3ddd4; min-width: 0; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; color: #625b52; font-weight: 600; margin-bottom: 8px; }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+  textarea, input { font: inherit; font-size: 14px; padding: 5px 7px; border: 1px solid #cfc7bb; border-radius: 6px; width: 100%; min-width: 0; background: #fdfcfa; }
+  textarea { height: 168px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  .bad { border-color: #b3402e !important; background: #fff0eb !important; }
+  label { font-size: 12px; color: #756d63; display: block; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
+  .fields .hint { font-size: 11px; color: #958c80; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 6px; border: 1px solid #7a4b1f; background: #7a4b1f; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #7a4b1f; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  #error { display: none; background: #fff0eb; border: 1px solid #e3b4a6; color: #8f2f1d; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  #summary { font-size: 21px; font-weight: 700; color: #7a4b1f; overflow-wrap: anywhere; }
+  #facts { margin: 8px 0 0 18px; font-size: 14px; color: #403a33; } #facts li { margin: 3px 0; overflow-wrap: anywhere; }
+  .cal { display: grid; grid-template-columns: 4.6em repeat(7, minmax(0, 1fr)); gap: 3px; font-size: 11px; }
+  .cal .h { text-align: center; color: #857c70; }
+  .cal .wk { color: #857c70; text-align: right; padding-right: 4px; align-self: center; white-space: nowrap; overflow: hidden; }
+  .cal .d { height: 30px; border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; color: #26231f; font-variant-numeric: tabular-nums; overflow: hidden; white-space: nowrap; }
+  .cal .d.e { background: transparent; }
+  .cal .d.best { outline: 2px solid #b3402e; outline-offset: -2px; }
+  .cal .d.last { box-shadow: inset 0 -4px 0 #2f6b8a; }
+  .cal .d.cap::after { content: "压"; position: absolute; top: 0; right: 2px; font-size: 9px; color: #fff; }
+  .legend { font-size: 12px; color: #625b52; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -2px; margin-right: 3px; }
+  .tw { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 6px 6px; border-top: 1px solid #efeae3; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  thead th { color: #756d63; font-weight: 600; border-top: none; font-size: 12px; }
+  tr.best td { color: #b3402e; font-weight: 700; } tr.all td { font-weight: 700; border-top: 2px solid #cfc7bb; }
+  td .bar { display: inline-block; height: 9px; background: #d9b48a; border-radius: 2px; vertical-align: 0; margin-right: 6px; }
+  tr.best td .bar { background: #b3402e; } tr.all td .bar { background: #7a4b1f; }
+  .wd { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; font-size: 12px; text-align: center; margin-top: 4px; }
+  .wd div { background: #f7f3ed; border-radius: 4px; padding: 4px 2px; overflow-wrap: anywhere; }
+  .wd b { display: block; color: #857c70; font-weight: 600; }
+  .sugs { list-style: none; }
+  .sugs li { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 8px 0; border-top: 1px solid #efeae3; font-size: 14px; }
+  .sugs li:first-child { border-top: none; } .sugs li span { overflow-wrap: anywhere; min-width: 0; }
+  .sugs li button { flex: none; }
+  .dl { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rules { font-size: 13px; color: #403a33; } .rules p { margin: 4px 0; }
+  .note { font-size: 12px; color: #857c70; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>挑出来的那七天</h1>
+  <p class="lead">「最近一周卖了 1,200 单，一年就是 6 万多单」——这种说法把最好看的几天乘成了一年。把每天的数贴进来，选几天一个窗口，它把每一段连续的窗口都折成一年，和整段实际折一年、最近几天、最差几天、中位数并排给你看，日历上标出挑中的是哪几天、尖峰在哪，再告诉你一句「一年能到多少」要每天平均多少才配得上。</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>每天的数（一行一个，或「日期 数」）</h2>
+      <textarea id="data" spellcheck="false"></textarea>
+      <p class="note" id="dataInfo"></p>
+    </div>
+    <div class="card">
+      <h2>怎么挑、怎么比</h2>
+      <div class="fields">
+        <div><label for="start">第一天是哪天</label><input id="start" placeholder="2026-08-01"><span class="hint">贴的是「日期 数」时以贴的日期为准</span></div>
+        <div><label for="k">几天一个窗口</label><input id="k" inputmode="numeric"></div>
+        <div><label for="unit">单位（可空）</label><input id="unit" maxlength="8"></div>
+        <div><label for="claim">别人说「一年能到」（可空）</label><input id="claim" inputmode="decimal"></div>
+        <div><label for="cap">尖峰压平：超过中位数几倍（0 = 不压）</label><input id="cap" inputmode="decimal"></div>
+      </div>
+      <div class="presets" id="presets"></div>
+    </div>
+  </div>
+
+  <div id="error"></div>
+
+  <div id="out" style="display:none;">
+    <div class="card">
+      <div id="summary"></div>
+      <ul id="facts"></ul>
+    </div>
+    <div class="card">
+      <h2>几种算法并排</h2>
+      <div class="tw"><table id="tbl"></table></div>
+      <p class="note">每一行都是「这段合计 × 365 ÷ 天数」，只是挑的天不一样；条的长度按「折一年」画，同一把尺子。</p>
+    </div>
+    <div class="card">
+      <h2>日历：挑中的是哪几天</h2>
+      <div class="cal" id="cal"></div>
+      <div class="legend" id="legend"></div>
+      <h2 style="margin-top:12px;">按星期几的日均</h2>
+      <div class="wd" id="wd"></div>
+    </div>
+    <div class="card" id="sugCard">
+      <h2>换个看法</h2>
+      <ul class="sugs" id="sugs"></ul>
+      <p class="note">每一条只改它说的那一个设置，数据不动；点「照这个改」会填回上面并重算。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>导出与保存</h2>
+    <div class="dl">
+      <button id="dlPNG">结果卡 PNG</button>
+      <button class="ghost" id="dlCSV">CSV</button>
+      <button class="ghost" id="dlMD">Markdown</button>
+      <button class="ghost" id="dlJSON">JSON 备份</button>
+      <button class="ghost" id="reset">恢复默认例子</button>
+    </div>
+    <p class="note">填的内容自动保存在这台设备的浏览器里，刷新后还在；不上传、不联网。</p>
+  </div>
+
+  <div class="card rules">
+    <h2>怎么算的、算不了什么</h2>
+    <p><b>折一年</b>：任意连续 k 天合计 × 365 ÷ k。整段 N 天也一样：合计 × 365 ÷ N。所有连续 k 天的窗口都算一遍（共 N − k + 1 个），最好、最差取折一年最大、最小的那个，并列取最早的；中位数是这些窗口折一年排序后的中间值。</p>
+    <p><b>尖峰压平</b>：先算全部天的中位数，单日超过「中位数 × 倍数」的按这个上限算，再重新挑窗口；中位数是 0 时不压。这只是一种看法，压多少是你选的，不代表那几天的数不真实。</p>
+    <p><b>不处理</b>：增长趋势和季节性（它不预测明年，整段折一年也只是「照这段的平均过一年」）；缺天（请补 0，带日期贴时缺天会报错）；负数（退款、亏损请另算）；闰年按 365 天。默认例子的数字是虚构的，不对应任何真实公司或店铺。</p>
+  </div>
+</div>
+
+  <script>
+/* 挑出来的那七天 · 计算核心（无 DOM，可在 node 里 require）
+ * 一列「每天一个数」（流水、单量、访问量……），挑任意连续 k 天乘成一年，
+ * 和整段实际折一年、最近 k 天、最差 k 天、中位 k 天放在一起比。
+ *
+ * 公式（全部按 365 天一年）：
+ *   第 i 个窗口合计 W_i = v_i + … + v_{i+k−1}，i = 0 … N−k（共 M = N−k+1 个窗口）
+ *   窗口折一年 A_i = W_i × 365 / k
+ *   整段折一年 A_all = T × 365 / N，T = 全部天合计
+ *   最好的窗口取 A_i 最大的那个，并列取最早；最差取最小，并列取最早；中位数按 M 个 A_i 排序取中间（偶数取两中间平均）
+ * 尖峰压平（可选，倍数 c > 0）：单日超过「全部天中位数 × c」的按「中位数 × c」算；中位数为 0 时不压，并如实提示。
+ * 说法反推（可选，一年 X）：数有几个窗口能折到 ≥ X；要配得上 X，每天平均要 X/365。
+ */
+(function (root) {
+  'use strict';
+  const MAXN = 1000, YEAR = 365;
+  const WD = ['日', '一', '二', '三', '四', '五', '六'];
+
+  function bad(field, message) { const e = new Error(message); e.field = field; throw e; }
+  function numStr(s) { return /^-?\d+(\.\d+)?$/.test(s); }
+
+  /* 日期只认 YYYY-MM-DD（月日可一位），按 UTC 算，避免夏令时 */
+  function parseDate(s) {
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s == null ? '' : s).trim());
+    if (!m) return null;
+    const y = +m[1], mo = +m[2], d = +m[3];
+    if (y < 2000 || y > 2100) return null;
+    const t = Date.UTC(y, mo - 1, d);
+    const o = new Date(t);
+    if (o.getUTCFullYear() !== y || o.getUTCMonth() !== mo - 1 || o.getUTCDate() !== d) return null;
+    return t;
+  }
+  function dstr(t) { const o = new Date(t); const z = (n) => String(n).padStart(2, '0'); return o.getUTCFullYear() + '-' + z(o.getUTCMonth() + 1) + '-' + z(o.getUTCDate()); }
+  function md(t, withYear) { const o = new Date(t); return (withYear ? o.getUTCFullYear() + '年' : '') + (o.getUTCMonth() + 1) + '月' + o.getUTCDate() + '日'; }
+
+  /* 解析贴进来的数字：
+   *  ① 每行「日期 + 数」（2026-08-01,107 / 2026-08-01 107 / 制表符）：日期必须逐天连续，起始日期取第一行；
+   *  ② 否则按换行、空格、制表符、英文逗号、中文逗号、顿号、分号切开，每段一个数（不要写千分位）。 */
+  function parseSeries(text, startStr) {
+    const raw = String(text == null ? '' : text);
+    if (raw.length > 200000) bad('data', '贴的内容太长了（超过 20 万字符）');
+    const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter((l) => l !== '');
+    if (!lines.length) bad('data', '还没贴每天的数');
+    const DL = /^(\d{4}-\d{1,2}-\d{1,2})[\s,，;；\t]+(\S+)$/;
+    const dated = lines.filter((l) => DL.test(l)).length;
+    let vals = [], start = null, fromDates = false;
+    if (dated > 0) {
+      if (dated !== lines.length) {
+        const i = lines.findIndex((l) => !DL.test(l));
+        bad('data', '有的行带日期、有的不带：第 ' + (i + 1) + ' 行是「' + lines[i].slice(0, 20) + '」');
+      }
+      fromDates = true;
+      let prev = null;
+      lines.forEach((l, i) => {
+        const m = DL.exec(l);
+        const t = parseDate(m[1]);
+        if (t == null) bad('data', '第 ' + (i + 1) + ' 行的日期「' + m[1] + '」不是有效日期');
+        if (prev != null && t !== prev + 864e5) bad('data', '第 ' + (i + 1) + ' 行的日期 ' + m[1] + ' 和上一行不是连着的一天（缺天或重复都算不了，缺的那天请补 0）');
+        prev = t;
+        if (!numStr(m[2])) bad('data', '第 ' + (i + 1) + ' 行的数「' + m[2].slice(0, 12) + '」不是数字');
+        vals.push(Number(m[2]));
+      });
+      start = parseDate(lines[0].match(DL)[1]);
+    } else {
+      const toks = raw.split(/[\s,，、;；]+/).filter((s) => s !== '');
+      toks.forEach((s, i) => { if (!numStr(s)) bad('data', '第 ' + (i + 1) + ' 个数「' + s.slice(0, 12) + '」不是数字（数字之间用换行、空格或逗号分开，不要写千分位）'); vals.push(Number(s)); });
+      start = parseDate(startStr);
+      if (start == null) bad('start', '第一天的日期要写成 2026-08-01 这样');
+    }
+    if (vals.length < 2) bad('data', '至少要 2 天的数');
+    if (vals.length > MAXN) bad('data', '最多 ' + MAXN + ' 天（现在 ' + vals.length + ' 天）');
+    vals.forEach((v, i) => { if (v < 0) bad('data', '第 ' + (i + 1) + ' 天是负数（' + v + '），这个工具只算不小于 0 的每天数字'); if (v > 1e12) bad('data', '第 ' + (i + 1) + ' 天的数太大（上限 1 万亿）'); });
+    if (start + (vals.length - 1) * 864e5 > Date.UTC(2100, 11, 31)) bad('start', '日期超出 2100 年了');
+    return { vals, start, fromDates };
+  }
+
+  function parse(inp) {
+    const o = inp || {};
+    const s = parseSeries(o.data, o.start);
+    const N = s.vals.length;
+    const ks = String(o.k == null ? '' : o.k).trim();
+    if (ks === '') bad('k', '窗口天数没填');
+    if (!/^\d+$/.test(ks)) bad('k', '窗口天数要填正整数（现在是「' + ks.slice(0, 10) + '」）');
+    const k = Number(ks);
+    if (k < 1) bad('k', '窗口至少 1 天');
+    if (k > N) bad('k', '窗口 ' + k + ' 天比数据的 ' + N + ' 天还长');
+    const unit = String(o.unit == null ? '' : o.unit).trim().slice(0, 8);
+    const cs = String(o.claim == null ? '' : o.claim).trim().replace(/,/g, '');
+    let claim = null;
+    if (cs !== '') { if (!numStr(cs)) bad('claim', '「一年能到」要填数字'); claim = Number(cs); if (claim <= 0) bad('claim', '「一年能到」要大于 0'); if (claim > 1e15) bad('claim', '「一年能到」太大'); }
+    const caps = String(o.cap == null ? '' : o.cap).trim();
+    let cap = 0;
+    if (caps !== '') { if (!numStr(caps)) bad('cap', '尖峰倍数要填数字（0 = 不压）'); cap = Number(caps); if (cap < 0) bad('cap', '尖峰倍数不能是负数'); if (cap > 0 && cap < 1) bad('cap', '尖峰倍数要么 0（不压），要么不小于 1'); if (cap > 1000) bad('cap', '尖峰倍数太大'); }
+    return { vals: s.vals, start: s.start, fromDates: s.fromDates, N, k, unit, claim, cap };
+  }
+
+  function median(a) { const b = a.slice().sort((x, y) => x - y); const n = b.length; return n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2; }
+
+  /* 每个窗口直接逐天相加（N ≤ 1000，最多 50 万次加法），不用滑动减法，免得尾差让并列判断出错 */
+  function windows(v, k) {
+    const M = v.length - k + 1, W = new Array(M);
+    for (let i = 0; i < M; i++) { let s = 0; for (let j = i; j < i + k; j++) s += v[j]; W[i] = s; }
+    return W;
+  }
+
+  function core(p) {
+    const raw = p.vals, N = p.N, k = p.k;
+    const med = median(raw);
+    let capLine = null, capped = 0, capNote = '';
+    let v = raw;
+    if (p.cap > 0) {
+      if (med <= 0) capNote = '全部天的中位数是 0，没法按中位数压尖峰，这次没压';
+      else { capLine = med * p.cap; v = raw.map((x) => (x > capLine ? capLine : x)); capped = raw.filter((x) => x > capLine).length; }
+    }
+    const T = v.reduce((a, b) => a + b, 0);
+    const W = windows(v, k);
+    const M = W.length;
+    const f = YEAR / k;
+    let bi = 0, wi = 0;
+    for (let i = 1; i < M; i++) { if (W[i] > W[bi] + 1e-9 * Math.max(1, Math.abs(W[bi]))) bi = i; if (W[i] < W[wi] - 1e-9 * Math.max(1, Math.abs(W[wi]))) wi = i; }
+    const A = W.map((w) => w * f);
+    const Aall = T * YEAR / N;
+    const Amed = median(A);
+    const above = Aall > 0 ? A.filter((a) => a > Aall * (1 + 1e-12)).length : A.filter((a) => a > 0).length;
+    let topDay = bi;
+    for (let j = bi; j < bi + k; j++) if (v[j] > v[topDay]) topDay = j;
+    const days = raw.map((x, i) => { const t = p.start + i * 864e5; return { i, t, date: dstr(t), wd: new Date(t).getUTCDay(), raw: x, v: v[i], capped: capLine != null && x > capLine }; });
+    const wdSum = [0, 0, 0, 0, 0, 0, 0], wdCnt = [0, 0, 0, 0, 0, 0, 0];
+    days.forEach((d) => { wdSum[d.wd] += d.v; wdCnt[d.wd]++; });
+    const wdAvg = wdSum.map((s, j) => (wdCnt[j] ? s / wdCnt[j] : null));
+    let claimHit = null;
+    if (p.claim != null) claimHit = A.filter((a) => a >= p.claim * (1 - 1e-12)).length;
+    return { med, capLine, capped, capNote, v, T, W, A, M, f, bi, wi, Aall, Amed, above, topDay, days, wdAvg, wdCnt, claimHit,
+      Abest: A[bi], Aworst: A[wi], Alast: A[M - 1], avg: T / N };
+  }
+
+  function calculate(inp) {
+    const p = parse(inp);
+    const c = core(p);
+    const res = Object.assign({}, p, c);
+    const u = p.unit;
+    const k = p.k, N = p.N;
+    const d = c.days;
+    /* 数据跨了年，日期都带上年份，免得「10月25日–10月24日」看不出是哪年 */
+    const Y = new Date(d[0].t).getUTCFullYear() !== new Date(d[N - 1].t).getUTCFullYear();
+    res.multiYear = Y;
+    const win = (i) => md(d[i].t, Y) + '–' + md(d[i + k - 1].t, Y);
+    const one = (t) => md(t, Y);
+    res.ratio = c.Aall > 0 ? c.Abest / c.Aall : null;
+    res.bestLabel = win(c.bi); res.worstLabel = win(c.wi); res.lastLabel = win(c.M - 1);
+    if (k === N) res.summary = '窗口就是整段 ' + N + ' 天，只有一种算法：折一年 ' + amt(c.Aall, u);
+    else if (c.Aall <= 0) res.summary = '整段 ' + N + ' 天合计是 0，挑哪 ' + k + ' 天折一年都是 0';
+    else res.summary = '挑出来的那 ' + k + ' 天折一年 ' + amt(c.Abest, u) + '，整段 ' + N + ' 天实际折一年 ' + amt(c.Aall, u) + '，前者是后者的 ' + fmt(res.ratio, 2) + ' 倍';
+    const f = [];
+    f.push('整段 ' + N + ' 天（' + d[0].date + ' 到 ' + d[N - 1].date + '）合计 ' + amt(c.T, u) + '，日均 ' + amt(c.avg, u) + '，按 365 天折一年 ' + amt(c.Aall, u) + '。');
+    if (k < N) {
+      f.push('最好的 ' + k + ' 天是 ' + res.bestLabel + '：合计 ' + amt(c.W[c.bi], u) + '，日均 ' + amt(c.W[c.bi] / k, u) + '；其中最高的一天 ' + one(d[c.topDay].t) + '（周' + WD[d[c.topDay].wd] + '）是 ' + amt(c.v[c.topDay], u) + '，占这 ' + k + ' 天的 ' + pc(c.W[c.bi] > 0 ? c.v[c.topDay] / c.W[c.bi] : 0) + '。');
+      f.push('最近 ' + k + ' 天（' + res.lastLabel + '）折一年 ' + amt(c.Alast, u) + (c.Aall > 0 ? '，是整段折年的 ' + fmt(c.Alast / c.Aall, 2) + ' 倍' : '') + '；最差的 ' + k + ' 天（' + res.worstLabel + '）折一年 ' + amt(c.Aworst, u) + '。');
+      f.push('一共 ' + c.M + ' 个连续 ' + k + ' 天的窗口，有 ' + c.above + ' 个（' + pc(c.above / c.M) + '）折出来比整段高；窗口折年的中位数是 ' + amt(c.Amed, u) + '。');
+    }
+    if (p.claim != null) {
+      const need = p.claim / YEAR;
+      f.push('说「一年能到 ' + amt(p.claim, u) + '」：' + (k < N ? c.M + ' 个 ' + k + ' 天窗口里有 ' + c.claimHit + ' 个能折到这么多' : (c.claimHit ? '整段折年够了' : '整段折年不够')) + '；要按全年都这样，每天平均得 ' + amt(need, u) + (c.avg > 0 ? '，现在整段日均 ' + amt(c.avg, u) + (need > c.avg ? '，还差 ' + pc(need / c.avg - 1) : '，已经够了') : '') + '。');
+    }
+    if (c.capLine != null) f.push('已压尖峰：全部天中位数 ' + amt(c.med, u) + '，单日超过 ' + fmt(p.cap, 2) + ' 倍（' + amt(c.capLine, u) + '）的按 ' + amt(c.capLine, u) + ' 算，共 ' + c.capped + ' 天；上面所有数都是压过之后的。');
+    else if (c.capNote) f.push(c.capNote + '。');
+    res.facts = f;
+    /* 几种口径并排 */
+    const rows = [];
+    if (k < N) {
+      rows.push({ key: 'best', name: '挑最好的 ' + k + ' 天', when: res.bestLabel, sum: c.W[c.bi], a: c.Abest });
+      rows.push({ key: 'last', name: '最近 ' + k + ' 天', when: res.lastLabel, sum: c.W[c.M - 1], a: c.Alast });
+      rows.push({ key: 'med', name: k + ' 天窗口的中位数', when: '共 ' + c.M + ' 个窗口', sum: c.Amed / c.f, a: c.Amed });
+      rows.push({ key: 'worst', name: '最差的 ' + k + ' 天', when: res.worstLabel, sum: c.W[c.wi], a: c.Aworst });
+    }
+    rows.push({ key: 'all', name: '整段 ' + N + ' 天', when: one(d[0].t) + '–' + one(d[N - 1].t), sum: c.T, a: c.Aall });
+    rows.forEach((r) => { r.vsAll = c.Aall > 0 ? r.a / c.Aall : null; });
+    res.rows = rows;
+    return res;
+  }
+
+  /* 只改一个输入，算出对照；不改原对象 */
+  function variant(inp, patch) { const q = Object.assign({}, inp, patch); try { return calculate(q); } catch (e) { return null; } }
+  function suggestions(inp, res) {
+    const out = [], u = res.unit;
+    if (res.k < res.N) {
+      [30, 28].forEach((kk) => {
+        if (out.some((s) => s.kind === 'k') || kk <= res.k || kk >= res.N) return;
+        const r = variant(inp, { k: kk });
+        if (r && r.Abest < res.Abest - 1e-9) out.push({ kind: 'k', text: '窗口拉长到 ' + kk + ' 天：最好的 ' + kk + ' 天折一年 ' + amt(r.Abest, u) + (r.Aall > 0 ? '，只有整段的 ' + fmt(r.ratio, 2) + ' 倍' : '') + '。', apply: { k: String(kk) } });
+      });
+      out.push({ kind: 'all', text: '直接用整段 ' + res.N + ' 天：折一年 ' + amt(res.Aall, u) + '，这是手上数据能给出的最稳的说法。', apply: { k: String(res.N) } });
+    }
+    if (!(res.cap > 0) && res.med > 0) {
+      const r = variant(inp, { cap: '2' });
+      if (r && r.capped > 0 && r.Abest < res.Abest - 1e-9) out.push({ kind: 'cap', text: '把单日超过中位数 2 倍的尖峰压平再挑：有 ' + r.capped + ' 天被压，最好的 ' + res.k + ' 天折一年变成 ' + amt(r.Abest, u) + '。', apply: { cap: '2' } });
+    }
+    if (res.cap > 0) {
+      const r = variant(inp, { cap: '0' });
+      if (r) out.push({ kind: 'uncap', text: '不压尖峰：最好的 ' + res.k + ' 天折一年回到 ' + amt(r.Abest, u) + '。', apply: { cap: '0' } });
+    }
+    if (res.Aall > 0) {
+      const x = roundNice(res.Aall);
+      if (res.claim == null || Math.abs(res.claim - x) > 1e-9) out.push({ kind: 'claim', text: '对外说的话，按整段折年往小里取个整，说「一年 ' + amt(x, u) + '」：' + (res.k < res.N ? res.M + ' 个窗口里有 ' + res.A.filter((a) => a >= x * (1 - 1e-12)).length + ' 个能到。' : '和整段一致。'), apply: { claim: String(x) } });
+    }
+    return out;
+  }
+  /* 取 3 位有效数字，往下取，给一个好念的数 */
+  function roundNice(v) { if (!(v > 0)) return 0; const e = Math.pow(10, Math.floor(Math.log10(v)) - 2); return Math.floor(v / e + 1e-9) * e > 0 ? Number((Math.floor(v / e + 1e-9) * e).toPrecision(3)) : v; }
+
+  /* ── 格式化 ── */
+  function fmt(v, d) {
+    if (!isFinite(v)) return String(v);
+    const p = d == null ? 1 : d;
+    const q = Number(v.toPrecision(12));
+    let s = (Math.sign(q) * Math.round(Number((Math.abs(q) * Math.pow(10, p)).toPrecision(12))) / Math.pow(10, p)).toFixed(p);
+    if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
+    if (s === '-0') s = '0';
+    return s;
+  }
+  function group(s) { const parts = s.split('.'); parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); return parts.join('.'); }
+  function pc(f) { return fmt(f * 100, 1) + '%'; }
+  /* 数量：< 1 万照写（最多 2 位小数）；≥ 1 万写「x 万」；≥ 1 亿写「x 亿」；单位接在后面 */
+  function num(v) {
+    const a = Math.abs(Number(fmt(v, 2)));
+    if (a >= 1e8 || Math.abs(Number(fmt(v / 1e4, 2))) >= 1e4) return group(fmt(v / 1e8, 2)) + ' 亿';
+    if (a >= 1e4) return group(fmt(v / 1e4, 2)) + ' 万';
+    return group(fmt(v, 2));
+  }
+  function amt(v, u) { const s = num(v); return u ? s + (/[万亿]$/.test(s) ? '' : ' ') + u : s; }
+
+  function csvCell(s) { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function toCSV(res, when) {
+    const L = [['日期', '星期', '原始值', '计算用值', '是否被压', '从这天起' + res.k + '天合计', '从这天起' + res.k + '天折一年'].map(csvCell).join(',')];
+    res.days.forEach((d) => {
+      const has = d.i < res.M;
+      L.push([d.date, '周' + WD[d.wd], d.raw, fmt(d.v, 6), d.capped ? '是' : '', has ? fmt(res.W[d.i], 6) : '', has ? fmt(res.A[d.i], 4) : ''].map(csvCell).join(','));
+    });
+    L.push('');
+    L.push(['口径', '时间', '合计', '折一年', '是整段的几倍'].map(csvCell).join(','));
+    res.rows.forEach((r) => L.push([r.name, r.when, fmt(r.sum, 4), fmt(r.a, 4), r.vsAll == null ? '' : fmt(r.vsAll, 4)].map(csvCell).join(',')));
+    L.push('');
+    L.push(csvCell('单位：' + (res.unit || '（未填）') + '；一年按 365 天；数字是按你贴的数据算的；导出于 ' + when));
+    return L.join('\n') + '\n';
+  }
+  function toMD(res, when, sugs) {
+    const u = res.unit;
+    const L = ['# 挑出来的那七天', '', '> 导出于 ' + when + '。窗口 ' + res.k + ' 天，一年按 365 天' + (res.unit ? '，单位 ' + res.unit : '') + '。按你贴的数据算。', '', '**' + res.summary + '**', ''];
+    res.facts.forEach((f) => L.push('- ' + f));
+    L.push('', '| 口径 | 时间 | 合计 | 折一年 | 是整段的 |', '|---|---|---:|---:|---:|');
+    res.rows.forEach((r) => L.push('| ' + r.name + ' | ' + r.when + ' | ' + amt(r.sum, u) + ' | ' + amt(r.a, u) + ' | ' + (r.vsAll == null ? '—' : fmt(r.vsAll, 2) + ' 倍') + ' |'));
+    L.push('', '| 星期 | 一 | 二 | 三 | 四 | 五 | 六 | 日 |', '|---|---:|---:|---:|---:|---:|---:|---:|');
+    L.push('| 日均 | ' + [1, 2, 3, 4, 5, 6, 0].map((j) => (res.wdAvg[j] == null ? '—' : amt(res.wdAvg[j], u))).join(' | ') + ' |');
+    if (sugs && sugs.length) { L.push('', '## 换个看法', ''); sugs.forEach((s) => L.push('- ' + s.text)); }
+    return L.join('\n') + '\n';
+  }
+
+  const api = { parse, parseSeries, parseDate, calculate, suggestions, variant, windows, median, roundNice, fmt, pc, num, amt, dstr, md, toCSV, toMD, WD, MAXN, YEAR };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  root.AppCore = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
+/* 挑出来的那七天 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'seven-day-pick:v1';
+  const DEFDATA = '107,104,76,78,82,87,88,118,114,74,87,81,85,98,118,114,83,86,90,95,97,129,113,81,95,89,93,107,129,124,91,94,98,92,106,140,123,89,103,97,101,116,139,134,87,102,106,100,114,150,134,96,111,105,109,113,150,144,94,110,114,258,233,231,174,103,108,113,117,122,161,154,101,118,122,116,132,161,154,111,116,121,125,131,172,164,109,126,119,124'.split(',').join('\n');
+  const DEFAULT = { data: DEFDATA, start: '2026-08-01', k: '7', unit: '单', claim: '60000', cap: '' };
+  /* 开业头几周最热闹：从 300 慢慢落到 120 左右（虚构） */
+  const OPEN = (function () { const a = []; for (let i = 0; i < 60; i++) a.push(Math.round(120 + 180 * Math.exp(-i / 9) + ((i * 29) % 13) - 6)); return a.join('\n'); })();
+  const DATED = ['2026-11-02 3820', '2026-11-03 4105', '2026-11-04 3960', '2026-11-05 4410', '2026-11-06 5230', '2026-11-07 7880', '2026-11-08 7410', '2026-11-09 3700', '2026-11-10 3890', '2026-11-11 12650', '2026-11-12 4020', '2026-11-13 5110', '2026-11-14 7650', '2026-11-15 7230'].join('\n');
+  const PRESETS = [
+    ['默认：一家小店 90 天的单量', DEFAULT],
+    ['开业头几周最热闹', { data: OPEN, start: '2026-09-01', k: '7', unit: '杯', claim: '', cap: '' }],
+    ['带日期贴的两周流水，3 天一挑', { data: DATED, start: '', k: '3', unit: '元', claim: '2000000', cap: '' }]
+  ];
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const copy = (o) => JSON.parse(JSON.stringify(o));
+  const IDS = ['data', 'start', 'k', 'unit', 'claim', 'cap'];
+  let state = copy(DEFAULT);
+  let last = null;
+
+  function fill() { IDS.forEach((id) => { $(id).value = state[id] == null ? '' : state[id]; }); }
+  function readInputs() { IDS.forEach((id) => { state[id] = $(id).value; }); }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object' || Array.isArray(o) || typeof o.data !== 'string') return null;
+      const s = (v, n) => String(v == null ? '' : v).slice(0, n);
+      return { data: s(o.data, 200000), start: s(o.start, 20), k: s(o.k, 10), unit: s(o.unit, 8), claim: s(o.claim, 24), cap: s(o.cap, 10) };
+    } catch (e) { return null; }
+  }
+
+  function shade(v, max) {
+    const f = max > 0 ? Math.min(1, v / max) : 0;
+    const a = [247, 239, 228], b = [192, 120, 52];
+    return 'rgb(' + a.map((x, i) => Math.round(x + (b[i] - x) * f)).join(',') + ')';
+  }
+  function render(r, sugs) {
+    const u = r.unit;
+    $('summary').textContent = r.summary;
+    $('facts').innerHTML = r.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+    const maxA = Math.max.apply(null, r.rows.map((x) => x.a)) || 1;
+    let t = '<thead><tr><th>怎么挑</th><th>哪几天</th><th>这段合计</th><th>折一年</th><th>是整段的</th></tr></thead><tbody>';
+    r.rows.forEach((x) => {
+      t += '<tr class="' + (x.key === 'best' ? 'best' : x.key === 'all' ? 'all' : '') + '" data-key="' + x.key + '"><td>' + esc(x.name) + '</td><td>' + esc(x.when) + '</td><td>' + esc(C.amt(x.sum, u)) + '</td><td><span class="bar" style="width:' + (60 * x.a / maxA).toFixed(1) + 'px"></span>' + esc(C.amt(x.a, u)) + '</td><td>' + (x.vsAll == null ? '—' : C.fmt(x.vsAll, 2) + ' 倍') + '</td></tr>';
+    });
+    $('tbl').innerHTML = t + '</tbody>';
+    /* 日历：周一开头 */
+    const maxV = Math.max.apply(null, r.v);
+    const first = r.days[0], lead = (first.wd + 6) % 7;
+    let h = '<div class="h"></div>' + ['一', '二', '三', '四', '五', '六', '日'].map((x) => '<div class="h">' + x + '</div>').join('');
+    const cells = [];
+    for (let i = 0; i < lead; i++) cells.push(null);
+    r.days.forEach((d) => cells.push(d));
+    while (cells.length % 7) cells.push(null);
+    for (let w = 0; w < cells.length / 7; w++) {
+      const row = cells.slice(w * 7, w * 7 + 7);
+      const fd = row.find((x) => x);
+      h += '<div class="wk">' + esc(fd ? C.md(fd.t) : '') + '</div>';
+      row.forEach((d) => {
+        if (!d) { h += '<div class="d e"></div>'; return; }
+        const inBest = r.k < r.N && d.i >= r.bi && d.i < r.bi + r.k;
+        const inLast = r.k < r.N && d.i >= r.M - 1;
+        h += '<div class="d' + (inBest ? ' best' : '') + (inLast ? ' last' : '') + (d.capped ? ' cap' : '') + '" style="background:' + shade(d.v, maxV) + ';color:' + (maxV > 0 && d.v / maxV > 0.62 ? '#fff' : '#26231f') + '" title="' + esc(d.date + ' 周' + C.WD[d.wd] + ' ' + C.amt(d.raw, u) + (d.capped ? '（按 ' + C.amt(d.v, u) + ' 算）' : '')) + '">' + esc(C.num(d.raw)) + '</div>';
+      });
+    }
+    $('cal').innerHTML = h;
+    $('legend').innerHTML = (r.k < r.N ? '<span><i style="outline:2px solid #b3402e;outline-offset:-2px;background:#fff"></i>挑出来的 ' + r.k + ' 天</span><span><i style="background:#fff;box-shadow:inset 0 -4px 0 #2f6b8a"></i>最近 ' + r.k + ' 天</span>' : '') +
+      '<span><i style="background:' + shade(0, 1) + '"></i>少</span><span><i style="background:' + shade(1, 1) + '"></i>多</span>' + (r.capLine != null ? '<span>右上角「压」= 被压平的尖峰</span>' : '');
+    $('wd').innerHTML = [1, 2, 3, 4, 5, 6, 0].map((j) => '<div><b>周' + C.WD[j] + '</b>' + (r.wdAvg[j] == null ? '—' : esc(C.amt(r.wdAvg[j], u))) + '<br><span style="color:#958c80">' + r.wdCnt[j] + ' 天</span></div>').join('');
+    const ul = $('sugs'); ul.innerHTML = '';
+    $('sugCard').style.display = sugs.length ? '' : 'none';
+    sugs.forEach((sc) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<span></span><button class="ghost" data-kind="' + sc.kind + '">照这个改</button>';
+      li.querySelector('span').textContent = sc.text;
+      li.querySelector('button').addEventListener('click', () => { Object.assign(state, sc.apply); fill(); run(); });
+      ul.appendChild(li);
+    });
+  }
+
+  function info() {
+    try { const s = C.parseSeries(state.data, state.start || '2000-01-01'); $('dataInfo').textContent = '读到 ' + s.vals.length + ' 天' + (s.fromDates ? '（按贴的日期，从 ' + C.dstr(s.start) + ' 起）' : '') + '。'; } catch (e) { $('dataInfo').textContent = ''; }
+  }
+  function run() {
+    IDS.forEach((id) => $(id).classList.remove('bad'));
+    info();
+    try {
+      const r = C.calculate(state);
+      const sg = C.suggestions(state, r);
+      last = { r, sg };
+      $('error').style.display = 'none';
+      $('out').style.display = '';
+      render(r, sg);
+    } catch (e) {
+      last = null;
+      if (e.field && $(e.field)) $(e.field).classList.add('bad');
+      $('error').textContent = '算不了：' + e.message; $('error').style.display = 'block';
+      $('out').style.display = 'none';
+    }
+    save();
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%';
+    const out = []; let line = '';
+    const toks = String(t).match(/[0-9][0-9,.%]*|[A-Za-z]+|[\s\S]/g) || [];
+    for (const ch of toks) {
+      if (g.measureText(line + ch).width > w && line) {
+        if (NOHEAD.indexOf(ch[0]) >= 0) { const l = line.slice(-1); out.push(line.slice(0, -1)); line = l + ch; } else { out.push(line); line = ch.replace(/^\s+/, ''); }
+      } else line += ch;
+    }
+    if (line) out.push(line); return out;
+  }
+  function clip(g, t, w) { t = String(t); if (g.measureText(t).width <= w) return t; while (t.length > 1 && g.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; }
+  function drawPNG(r, sugs) {
+    const W = 1080, H = 1350, u = r.unit;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'); const FF = '"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#f4f2ee'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.fillRect(50, 50, 980, 1250);
+    g.fillStyle = '#625b52'; g.font = '30px ' + FF; g.fillText('挑出来的那七天', 100, 118);
+    g.font = '22px ' + FF;
+    g.fillText(clip(g, r.N + ' 天 · ' + r.k + ' 天一个窗口 · 一年按 365 天' + (u ? ' · 单位 ' + u : '') + (r.capLine != null ? ' · 尖峰已压平' : ''), 880), 100, 158);
+    g.fillStyle = '#7a4b1f';
+    let fs = 42, sl;
+    for (; fs >= 26; fs -= 2) { g.font = 'bold ' + fs + 'px ' + FF; sl = wrap(g, r.summary, 880); if (sl.length <= 3) break; }
+    let y = 184 + fs;
+    sl.slice(0, 4).forEach((l) => { g.fillText(l, 100, y); y += Math.round(fs * 1.33); });
+    y += 14;
+    /* 并排条 */
+    const maxA = Math.max.apply(null, r.rows.map((x) => x.a)) || 1;
+    r.rows.forEach((x) => {
+      g.fillStyle = '#403a33'; g.font = '22px ' + FF; g.fillText(clip(g, x.name, 250), 100, y + 24);
+      const bw = 420 * x.a / maxA;
+      g.fillStyle = x.key === 'best' ? '#b3402e' : x.key === 'all' ? '#7a4b1f' : '#d9b48a'; g.fillRect(370, y + 6, Math.max(2, bw), 26);
+      g.fillStyle = '#26231f'; g.font = 'bold 22px ' + FF; g.textAlign = 'right'; g.fillText(clip(g, C.amt(x.a, u), 180), 980, y + 27); g.textAlign = 'left';
+      y += 44;
+    });
+    y += 24;
+    /* 迷你日历条：每天一格 */
+    const maxV = Math.max.apply(null, r.v);
+    const cols = Math.min(r.N, 90);
+    const cw = Math.min(24, 880 / cols);
+    const rowsN = Math.ceil(r.N / cols), ch = Math.max(6, Math.min(26, 120 / rowsN));
+    const pos = (i) => ({ x: 100 + (i % cols) * cw, y: y + Math.floor(i / cols) * (ch + 3) });
+    r.days.forEach((d) => { const q = pos(d.i); g.fillStyle = shade(d.v, maxV); g.fillRect(q.x, q.y, Math.max(1, cw - 1), ch); });
+    if (r.k < r.N) {
+      /* 挑出来的窗口：按行画一个整体红框（窗口可能跨行） */
+      g.strokeStyle = '#b3402e'; g.lineWidth = 3;
+      let i = r.bi;
+      while (i < r.bi + r.k) {
+        const rowEnd = Math.min(r.bi + r.k, (Math.floor(i / cols) + 1) * cols);
+        const a = pos(i);
+        g.strokeRect(a.x - 1.5, a.y - 1.5, (rowEnd - i) * cw + 2, ch + 3);
+        i = rowEnd;
+      }
+    }
+    y += rowsN * (ch + 3) + 14;
+    g.fillStyle = '#857c70'; g.font = '18px ' + FF; g.fillText('每格一天，颜色越深越多；红框是挑出来的那几天', 100, y + 8);
+    y += 56;
+    g.fillStyle = '#26231f'; g.font = '23px ' + FF;
+    const items = r.facts.slice(1).concat(sugs.slice(0, 2).map((s) => '→ ' + s.text));
+    for (const t of items) {
+      const ls = wrap(g, (t.startsWith('→') ? '' : '· ') + t, 860);
+      if (y + ls.length * 34 > 1228) break;
+      ls.forEach((l) => { g.fillText(l, 100, y); y += 34; });
+      y += 8;
+    }
+    g.fillStyle = '#857c70'; g.font = '19px ' + FF;
+    g.fillText('按你贴的数据算；折一年 = 这段合计 × 365 ÷ 天数，不是预测。', 100, 1262);
+    return cv;
+  }
+  function backup() {
+    const r = last.r;
+    return { app: '挑出来的那七天', version: 1, savedAt: stamp(), input: copy(state),
+      result: { summary: r.summary, N: r.N, k: r.k, total: r.T, annualAll: r.Aall, annualBest: r.Abest, annualLast: r.Alast, annualWorst: r.Aworst, annualMedian: r.Amed,
+        best: { from: r.days[r.bi].date, to: r.days[r.bi + r.k - 1].date }, ratio: r.ratio, windows: r.M, above: r.above, claimHit: r.claimHit, capped: r.capped, facts: r.facts } };
+  }
+
+  function init() {
+    IDS.forEach((id) => $(id).addEventListener('input', () => { readInputs(); run(); }));
+    const box = $('presets');
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = copy(p[1]); fill(); run(); });
+      box.appendChild(b);
+    });
+    $('reset').addEventListener('click', () => { state = copy(DEFAULT); fill(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download('挑出来的那七天.csv', new Blob(['\ufeff' + C.toCSV(last.r, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download('挑出来的那七天.md', new Blob([C.toMD(last.r, stamp(), last.sg)], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download('挑出来的那七天-备份.json', new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last.r, last.sg).toBlob((b) => download('挑出来的那七天-1080x1350.png', b), 'image/png'); });
+    state = load() || copy(DEFAULT);
+    fill(); run();
+    window.__sp = { last: () => last, state: () => state, presets: PRESETS };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
